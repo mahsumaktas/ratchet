@@ -4,6 +4,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scripts/_lib.sh
 source "$SCRIPT_DIR/_lib.sh"
 
 root="$(ar_project_root 2>/dev/null)" || root="$PWD"

@@ -8,6 +8,7 @@
 
 SCRIPT_DIR="${HOME}/.claude/skills/autoresearch/scripts"
 [ -f "$SCRIPT_DIR/_lib.sh" ] || exit 0
+# shellcheck source=scripts/_lib.sh
 source "$SCRIPT_DIR/_lib.sh"
 
 INPUT=$(cat)
@@ -22,7 +23,7 @@ STATE_FILE="$ROOT/.autoresearch/state.json"
 [ -f "$STATE_FILE" ] || exit 0
 
 # Make file path relative to project root
-REL_PATH="${FILE_PATH#$ROOT/}"
+REL_PATH="${FILE_PATH#"$ROOT"/}"
 
 # Check ALL patterns in a single python3 call (not one per pattern)
 matched_pattern=$(ar_check_boundary "$REL_PATH" "$STATE_FILE")

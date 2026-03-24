@@ -38,6 +38,7 @@ print(json.dumps({'systemMessage': msg}))
 # Log compact injection
 SCRIPT_DIR="${HOME}/.claude/skills/autoresearch/scripts"
 if [ -f "$SCRIPT_DIR/_lib.sh" ]; then
+  # shellcheck source=scripts/_lib.sh
   source "$SCRIPT_DIR/_lib.sh"
   ar_log "info" "compact-inject" "injected"
 fi

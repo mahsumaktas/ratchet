@@ -7,6 +7,7 @@
 
 SCRIPT_DIR="${HOME}/.claude/skills/autoresearch/scripts"
 [ -f "$SCRIPT_DIR/_lib.sh" ] || exit 0
+# shellcheck source=scripts/_lib.sh
 source "$SCRIPT_DIR/_lib.sh"
 
 INPUT=$(cat)

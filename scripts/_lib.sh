@@ -9,6 +9,7 @@ AR_STATE_FILE_NAME=".autoresearch/state.json"
 AR_CONFIG_FILE_NAME=".autoresearch/config.json"
 AR_ACTIVE_FLAG="/tmp/ar-active-${PPID}.txt"
 AR_ROOT_CACHE="/tmp/ar-root-${PPID}.txt"
+# shellcheck disable=SC2034
 AR_LOG_FILE="${HOME}/.claude/logs/autoresearch.jsonl"  # Legacy, kept for backward compat
 
 # --- Valid State Transitions ---
@@ -282,8 +283,11 @@ print(f'TOOL_NAME={shlex.quote(tn)}')
 print(f'FILE_PATH={shlex.quote(fp)}')
 print(f'COMMAND={shlex.quote(cmd)}')
 " 2>/dev/null)" 2>/dev/null || {
+    # shellcheck disable=SC2034
     TOOL_NAME=""
+    # shellcheck disable=SC2034
     FILE_PATH=""
+    # shellcheck disable=SC2034
     COMMAND=""
   }
 }

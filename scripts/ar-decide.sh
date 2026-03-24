@@ -4,6 +4,7 @@
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scripts/_lib.sh
 source "$SCRIPT_DIR/_lib.sh"
 
 root=$(ar_project_root)
@@ -96,7 +97,7 @@ echo "$decision_output"
 eval "$(ar_state_get_multi consecutive_discards experiment 2>/dev/null)" || true
 consec="${consecutive_discards:-0}"
 total="${experiment:-0}"
-if [ "${consec:-0}" -ge 5 ] || ([ "${total:-0}" -gt 0 ] && [ $((total % 20)) -eq 0 ]); then
+if [ "${consec:-0}" -ge 5 ] || { [ "${total:-0}" -gt 0 ] && [ $((total % 20)) -eq 0 ]; }; then
   "$SCRIPT_DIR/ar-self-review.sh" threshold 2>/dev/null || true
 fi
 

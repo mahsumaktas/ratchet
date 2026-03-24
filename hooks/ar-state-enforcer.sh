@@ -9,6 +9,7 @@
 # Source library AFTER fast exit check
 SCRIPT_DIR="${HOME}/.claude/skills/autoresearch/scripts"
 [ -f "$SCRIPT_DIR/_lib.sh" ] || exit 0
+# shellcheck source=scripts/_lib.sh
 source "$SCRIPT_DIR/_lib.sh"
 
 # Parse all fields from hook input in a single python3 call
