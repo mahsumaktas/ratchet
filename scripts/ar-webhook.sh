@@ -36,4 +36,4 @@ print(payload)
 " 2>/dev/null | curl -s -X POST -H 'Content-Type: application/json' \
   -d @- "$webhook_url" --max-time 5 >/dev/null 2>&1 || true
 
-ar_log "info" "webhook sent: event=$event"
+ar_log "info" "webhook" "sent" "event=$event"

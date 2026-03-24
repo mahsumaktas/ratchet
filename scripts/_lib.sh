@@ -9,7 +9,7 @@ AR_STATE_FILE_NAME=".autoresearch/state.json"
 AR_CONFIG_FILE_NAME=".autoresearch/config.json"
 AR_ACTIVE_FLAG="/tmp/ar-active-${PPID}.txt"
 AR_ROOT_CACHE="/tmp/ar-root-${PPID}.txt"
-AR_LOG_FILE="${HOME}/.claude/logs/autoresearch.jsonl"
+AR_LOG_FILE="${HOME}/.claude/logs/autoresearch.jsonl"  # Legacy, kept for backward compat
 
 # --- Valid State Transitions ---
 VALID_TRANSITIONS=(
@@ -172,21 +172,89 @@ ar_validate_transition() {
   return 1
 }
 
-# --- Log to JSONL (safe: uses python3 for proper JSON escaping) ---
+# --- Log to project-local JSONL (safe: key=value pairs, no JSON injection) ---
 ar_log() {
-  local level="$1"
-  local msg="$2"
-  mkdir -p "$(dirname "$AR_LOG_FILE")"
-  AR_LEVEL="$level" AR_MSG="$msg" python3 -c "
-import json, os, datetime
+  # Usage: ar_log level hook event [key=value ...]
+  local level="$1" hook="$2" event="$3"
+  shift 3
+
+  local root
+  root="$(ar_project_root 2>/dev/null)" || return 0
+  local log_dir="$root/.autoresearch/logs"
+  mkdir -p "$log_dir" 2>/dev/null || return 0
+
+  # Log rotation: events.jsonl > 5MB
+  local log_file="$log_dir/events.jsonl"
+  local file_size
+  file_size=$(stat -c %s "$log_file" 2>/dev/null || echo 0)
+  if [ "$file_size" -gt 5242880 ] 2>/dev/null; then
+    mv -f "$log_file.2" "$log_file.3" 2>/dev/null
+    mv -f "$log_file.1" "$log_file.2" 2>/dev/null
+    mv -f "$log_file" "$log_file.1" 2>/dev/null
+  fi
+
+  # Key=value pairs via safe export
+  local i=0
+  for kv in "$@"; do
+    export "AR_KV_${i}=${kv}"
+    i=$((i + 1))
+  done
+  export AR_KV_COUNT="$i"
+
+  AR_LEVEL="$level" AR_HOOK="$hook" AR_EVENT="$event" \
+    python3 -c "
+import json, os
+from datetime import datetime, timezone
 entry = {
-    'ts': datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+    'ts': datetime.now(timezone.utc).isoformat(),
     'level': os.environ['AR_LEVEL'],
-    'msg': os.environ['AR_MSG']
+    'hook': os.environ['AR_HOOK'],
+    'event': os.environ['AR_EVENT'],
 }
-with open(os.environ.get('AR_LOG_FILE', os.path.expanduser('~/.claude/logs/autoresearch.jsonl')), 'a') as f:
-    f.write(json.dumps(entry) + '\n')
-" 2>/dev/null || true
+count = int(os.environ.get('AR_KV_COUNT', '0'))
+for i in range(count):
+    kv = os.environ.get(f'AR_KV_{i}', '')
+    if '=' in kv:
+        k, v = kv.split('=', 1)
+        entry[k] = v
+print(json.dumps(entry, ensure_ascii=False))
+" >> "$log_file" 2>/dev/null
+
+  # Cleanup exported env vars
+  for j in $(seq 0 $((i - 1))); do unset "AR_KV_${j}"; done
+  unset AR_KV_COUNT
+}
+
+# --- Log experiment result to experiments.jsonl ---
+ar_log_experiment() {
+  local root
+  root="$(ar_project_root 2>/dev/null)" || return 0
+  local log_dir="$root/.autoresearch/logs"
+  mkdir -p "$log_dir" 2>/dev/null || return 0
+
+  python3 -c "
+import json, os
+from datetime import datetime, timezone
+
+def safe_json(s):
+    try: return json.loads(s)
+    except: return s
+
+entry = {
+    'ts': datetime.now(timezone.utc).isoformat(),
+    'experiment_id': int(os.environ.get('AR_EXP_ID', '0') or '0'),
+    'strategy': os.environ.get('AR_STRATEGY', ''),
+    'target_file': os.environ.get('AR_TARGET_FILE', ''),
+    'diff_summary': os.environ.get('AR_DIFF_SUMMARY', ''),
+    'metrics_before': safe_json(os.environ.get('AR_METRICS_BEFORE', '{}')),
+    'metrics_after': safe_json(os.environ.get('AR_METRICS_AFTER', '{}')),
+    'guard_passed': os.environ.get('AR_GUARD_PASSED', 'true') == 'true',
+    'decision': os.environ.get('AR_DECISION', ''),
+    'reason': os.environ.get('AR_REASON', ''),
+    'duration_sec': float(os.environ.get('AR_DURATION_SEC', '0') or '0'),
+}
+print(json.dumps(entry, ensure_ascii=False))
+" >> "$log_dir/experiments.jsonl" 2>/dev/null
 }
 
 # --- Emit System Message (safe: uses env var) ---
@@ -249,16 +317,42 @@ if v is not None:
 }
 
 # --- Check all never_touch patterns in a single call ---
+# Custom glob matcher: supports ** recursive, * single-segment, fnmatch basics
 ar_check_boundary() {
   local file_path="$1"
   local state_file="$2"
   AR_FILE="$file_path" AR_STATE="$state_file" python3 -c "
 import json, os, fnmatch
+
+def glob_match(filepath, pattern):
+    \"\"\"Match filepath against glob pattern with ** support.\"\"\"
+    if '**' in pattern:
+        parts = pattern.split('**', 1)
+        prefix = parts[0].rstrip('/')
+        suffix = parts[1].lstrip('/') if parts[1] else ''
+        # Check prefix matches
+        if prefix:
+            if not (filepath.startswith(prefix + '/') or filepath == prefix):
+                return False
+            remainder = filepath[len(prefix)+1:]
+        else:
+            remainder = filepath
+        # No suffix means match everything under prefix
+        if not suffix:
+            return True
+        # Check suffix against all possible sub-paths
+        segs = remainder.split('/')
+        for i in range(len(segs)):
+            if fnmatch.fnmatch('/'.join(segs[i:]), suffix):
+                return True
+        return False
+    return fnmatch.fnmatch(filepath, pattern)
+
 with open(os.environ['AR_STATE']) as f:
     patterns = json.load(f).get('never_touch', [])
 fp = os.environ['AR_FILE']
 for p in patterns:
-    if fnmatch.fnmatch(fp, p):
+    if glob_match(fp, p):
         print(p)
         exit(0)
 print('')

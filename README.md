@@ -71,9 +71,43 @@ Unlike markdown-only instructions, Ratchet uses real bash scripts that **mechani
 | `ar-metrics-collector.sh` | PostToolUse | Auto-runs frozen metrics + guard + decision engine after every edit |
 | `ar-session-restore.sh` | SessionStart | Restores state after Claude Code restart |
 | `ar-compact-inject.sh` | PostCompact | Injects state after context compaction |
-| `ar-stop-summary.sh` | Stop | Shows progress summary |
+| `ar-stop-summary.sh` | Stop | Shows progress summary + triggers self-review |
 
 **Performance:** When Ratchet is not active, all hooks exit in <1ms (single file existence check).
+
+### Comprehensive Logging (v2)
+
+Every hook call, every experiment, every decision is logged to project-local JSONL files:
+
+```
+.autoresearch/logs/
+├── events.jsonl        — hook-level micro events (state transitions, boundary checks, guard runs)
+├── experiments.jsonl    — full experiment records (metrics before/after, decision, strategy, duration)
+└── insights.jsonl       — self-review learnings (accumulated across sessions)
+```
+
+Log rotation: `events.jsonl` auto-rotates at 5MB. Experiments and insights are preserved for analysis.
+
+### Self-Review Engine (v2)
+
+Ratchet analyzes its own performance and auto-adjusts configuration:
+
+| Trigger | When | What it does |
+|---------|------|-------------|
+| **Session end** | Every stop | Analyzes all experiments, detects patterns |
+| **Threshold** | 5 consecutive discards or every 20 experiments | Mid-session course correction |
+| **Manual** | `/autoresearch review` | On-demand analysis |
+
+**Auto-detected patterns:**
+
+| Pattern | Action |
+|---------|--------|
+| Strategy < 10% success (5+ experiments) | Remove from rotation |
+| File with 3+ consecutive failures | Add to `never_touch` |
+| Last 10 experiments all discarded (local minimum) | Reset strategies + add `discovery` |
+| Strategy > 70% success | Prioritize (move to front) |
+
+**Safety:** Self-review can modify `strategy_rotation` and `never_touch`, but **never** touches `guard_command`, `frozen_commands`, `mode`, or `max_experiments`. Config backup taken before every change.
 
 ### State Machine
 
@@ -107,9 +141,13 @@ The keep/discard decision is made by `ar-decide.sh` — a deterministic script, 
 |---------|-------|----------|
 | Improved | PASS | **KEEP** |
 | Same, code shorter | PASS | **KEEP** |
+| Same, code same size | PASS | **KEEP** |
 | Same, code longer | PASS | **DISCARD** |
+| All errored | Any | **DISCARD** |
 | Improved | FAIL | **DISCARD** |
 | Worsened | Any | **DISCARD** |
+
+Code size is measured via `git diff --stat` (insertions minus deletions) — only checked when all metrics are unchanged.
 
 ### Context-Reset Proof
 
@@ -202,6 +240,9 @@ After running, you'll find in `.autoresearch/`:
 | `SUMMARY.md` | Final report (generated at completion) |
 | `ALERT.md` | Critical issues requiring human attention |
 | `metrics/` | Baseline, latest, and history of all metric runs |
+| `logs/events.jsonl` | Hook-level event log (v2) |
+| `logs/experiments.jsonl` | Experiment-level decision log (v2) |
+| `logs/insights.jsonl` | Self-review findings and actions (v2) |
 
 See [examples/sample-output/](examples/sample-output/) for realistic examples.
 
@@ -245,12 +286,36 @@ A: No. When Ratchet is not active, all hooks check a single file existence (`/tm
 **Q: What if it makes my code worse?**
 A: Impossible by design. Every change is measured against frozen metrics. If metrics worsen, the change is discarded. The guard command prevents regressions in critical areas (like tests).
 
+## Uninstall
+
+```bash
+bash ~/.claude/skills/autoresearch/uninstall.sh
+```
+
+Removes hooks, scripts, and settings.json entries. Project data (`.autoresearch/`) is preserved.
+
 ## Requirements
 
 - [Claude Code](https://claude.com/claude-code) (CLI)
 - `bash` 4+
-- `python3` 3.8+
+- `python3` 3.12+
 - `git`
+
+## Changelog
+
+### v2 (2026-03-24)
+- **Logging:** 3-tier JSONL logging (events, experiments, insights) with auto-rotation
+- **Self-review:** Autonomous pattern detection + config optimization (strategy pruning, file blocking, local minimum escape)
+- **Bug fix:** Boundary guard now supports `**` recursive globs (`node_modules/**` works correctly)
+- **Bug fix:** Shell injection in `ar-init.sh` replaced with `os.environ` pattern
+- **Bug fix:** Decision engine handles all-error metrics (DISCARD) and checks code size when metrics unchanged
+- **Bug fix:** `ar-metrics-collector.sh` pipe/heredoc stdin conflict resolved
+- **New:** `uninstall.sh` for clean removal
+- **New:** Integration test suite (`tests/test-ratchet.sh`)
+- **Improved:** `ar_state_get_multi` used for batch state reads (fewer python3 forks)
+
+### v1 (2026-03-23)
+- Initial release: 6 modes, state machine, enforcement hooks, deterministic decisions
 
 ## License
 

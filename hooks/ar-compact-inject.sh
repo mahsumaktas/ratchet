@@ -35,4 +35,11 @@ msg = (f'[RATCHET CONTEXT RESTORED] Active session detected after compaction.\n'
 print(json.dumps({'systemMessage': msg}))
 " 2>/dev/null
 
+# Log compact injection
+SCRIPT_DIR="${HOME}/.claude/skills/autoresearch/scripts"
+if [ -f "$SCRIPT_DIR/_lib.sh" ]; then
+  source "$SCRIPT_DIR/_lib.sh"
+  ar_log "info" "compact-inject" "injected"
+fi
+
 exit 0

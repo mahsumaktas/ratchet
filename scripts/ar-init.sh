@@ -21,7 +21,7 @@ if ! git rev-parse --is-inside-work-tree &>/dev/null; then
 fi
 
 if [ -f "$AR_DIR/state.json" ]; then
-  state=$(python3 -c "import json; print(json.load(open('$AR_DIR/state.json')).get('state',''))" 2>/dev/null)
+  state=$(AR_PATH="$AR_DIR/state.json" python3 -c "import json,os; print(json.load(open(os.environ['AR_PATH'])).get('state',''))" 2>/dev/null)
   if [ "$state" != "STOP" ] && [ -n "$state" ]; then
     echo "WARNING: Active session found (state=$state). Use ar-state.sh to manage." >&2
     echo "To force restart, delete $AR_DIR/state.json first." >&2
@@ -36,7 +36,7 @@ detect_commands() {
   if [ -f "$PROJECT_ROOT/package.json" ]; then
     # Node.js project
     local scripts
-    scripts=$(python3 -c "import json; s=json.load(open('$PROJECT_ROOT/package.json')).get('scripts',{}); print(' '.join(s.keys()))" 2>/dev/null || echo "")
+    scripts=$(AR_PKG="$PROJECT_ROOT/package.json" python3 -c "import json,os; s=json.load(open(os.environ['AR_PKG'])).get('scripts',{}); print(' '.join(s.keys()))" 2>/dev/null || echo "")
 
     [[ "$scripts" == *"test"* ]] && test_cmd="npm test 2>&1"
     [[ "$scripts" == *"lint"* ]] && lint_cmd="npm run lint 2>&1 | wc -l"
@@ -81,13 +81,12 @@ detect_commands() {
   fi
 
   # Output as JSON
-  python3 -c "
-import json
+  AR_TEST="$test_cmd" AR_LINT="$lint_cmd" AR_TYPE="$type_cmd" AR_BUILD="$build_cmd" python3 -c "
+import json, os
 d = {}
-if '$test_cmd': d['test'] = '$test_cmd'
-if '$lint_cmd': d['lint'] = '$lint_cmd'
-if '$type_cmd': d['type'] = '$type_cmd'
-if '$build_cmd': d['build'] = '$build_cmd'
+for key, env in [('test','AR_TEST'),('lint','AR_LINT'),('type','AR_TYPE'),('build','AR_BUILD')]:
+    v = os.environ.get(env, '')
+    if v: d[key] = v
 d['guard'] = d.get('test', '')
 print(json.dumps(d))
 "
@@ -96,7 +95,7 @@ print(json.dumps(d))
 # --- Read config or use defaults ---
 never_touch='["*.lock", "node_modules/**", "vendor/**", ".env*", "*.min.js", "*.min.css", "dist/**", "build/**"]'
 if [ -f "$AR_DIR/config.json" ]; then
-  config_never=$(python3 -c "import json; print(json.dumps(json.load(open('$AR_DIR/config.json')).get('never_touch', [])))" 2>/dev/null)
+  config_never=$(AR_CFG="$AR_DIR/config.json" python3 -c "import json,os; print(json.dumps(json.load(open(os.environ['AR_CFG'])).get('never_touch', [])))" 2>/dev/null)
   [ -n "$config_never" ] && [ "$config_never" != "[]" ] && never_touch="$config_never"
 fi
 
@@ -113,15 +112,15 @@ frozen_commands=$(detect_commands)
 echo "Running baseline metrics..." >&2
 baseline_results="{}"
 for metric in test lint type build; do
-  cmd=$(echo "$frozen_commands" | python3 -c "import json,sys; print(json.load(sys.stdin).get('$metric',''))" 2>/dev/null)
+  cmd=$(AR_METRIC="$metric" python3 -c "import json,sys,os; print(json.load(sys.stdin).get(os.environ['AR_METRIC'],''))" 2>/dev/null <<< "$frozen_commands")
   if [ -n "$cmd" ]; then
     result=$(eval "$cmd" 2>/dev/null | tail -1 || echo "error")
-    baseline_results=$(echo "$baseline_results" | python3 -c "
-import json, sys
+    baseline_results=$(AR_METRIC="$metric" AR_RESULT="$result" python3 -c "
+import json, sys, os
 d = json.load(sys.stdin)
-d['$metric'] = '''$result'''.strip()
+d[os.environ['AR_METRIC']] = os.environ['AR_RESULT'].strip()
 print(json.dumps(d))
-" 2>/dev/null)
+" 2>/dev/null <<< "$baseline_results")
   fi
 done
 
@@ -203,7 +202,7 @@ echo "$PROJECT_ROOT" > "$AR_ROOT_CACHE"
 # --- Transition to SELECT_TARGET ---
 source "$SCRIPT_DIR/_lib.sh"
 ar_state_set "state" '"SELECT_TARGET"'
-ar_log "info" "bootstrap complete: mode=$MODE branch=$BRANCH"
+ar_log "info" "bootstrap" "complete" "mode=$MODE" "branch=$BRANCH"
 
 echo "Ratchet initialized: mode=$MODE, branch=$BRANCH" >&2
 echo "State: SELECT_TARGET — ready for first experiment." >&2

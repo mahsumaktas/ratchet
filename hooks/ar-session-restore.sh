@@ -49,4 +49,16 @@ msg = (f'[RATCHET SESSION RESTORED] Mode: {mode} | Experiment: {exp} | State: {s
 print(json.dumps({'systemMessage': msg}))
 " 2>/dev/null
 
+# Log restore event
+SCRIPT_DIR="${HOME}/.claude/skills/autoresearch/scripts"
+if [ -f "$SCRIPT_DIR/_lib.sh" ]; then
+  source "$SCRIPT_DIR/_lib.sh"
+  CURRENT_STATE=$(AR_PATH="$STATE_FILE" python3 -c "
+import json, os
+with open(os.environ['AR_PATH']) as f:
+    print(json.load(f).get('state',''))
+" 2>/dev/null)
+  ar_log "info" "session-restore" "restored" "state=$CURRENT_STATE"
+fi
+
 exit 0

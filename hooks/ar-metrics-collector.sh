@@ -32,17 +32,28 @@ metrics=$("$SCRIPT_DIR/ar-metrics.sh" run 2>/dev/null) || metrics="{}"
 
 # Run guard
 guard_result=$("$SCRIPT_DIR/ar-guard.sh" run 2>/dev/null) || guard_result='{"passed":true}'
-guard_passed=$(echo "$guard_result" | AR_INPUT="$(cat)" python3 -c "
-import json, sys, os
-d = json.load(sys.stdin)
+guard_passed=$(AR_GUARD_JSON="$guard_result" python3 -c "
+import json, os
+d = json.loads(os.environ.get('AR_GUARD_JSON', '{}'))
 print('true' if d.get('passed', True) else 'false')
-" 2>/dev/null <<< "$guard_result") || guard_passed="true"
+" 2>/dev/null) || guard_passed="true"
 
 # Run decision engine
 decision=$("$SCRIPT_DIR/ar-decide.sh" "$guard_passed" 2>/dev/null) || decision='{"decision":"KEEP","reason":"metrics unavailable"}'
 
 # Transition to DECIDE
 "$SCRIPT_DIR/ar-state.sh" transition DECIDE >/dev/null 2>&1 || true
+
+# Log experiment
+AR_EXP_ID=$(ar_state_get "experiment") \
+AR_STRATEGY=$(ar_state_get "strategy") \
+AR_TARGET_FILE=$(ar_state_get "current_target" 2>/dev/null) \
+AR_METRICS_BEFORE=$(cat "$ROOT/.autoresearch/metrics/best.json" 2>/dev/null) \
+AR_METRICS_AFTER="$metrics" \
+AR_GUARD_PASSED="$guard_passed" \
+AR_DECISION=$(echo "$decision" | python3 -c "import json,sys; print(json.load(sys.stdin).get('decision',''))" 2>/dev/null) \
+AR_REASON=$(echo "$decision" | python3 -c "import json,sys; print(json.load(sys.stdin).get('reason',''))" 2>/dev/null) \
+  ar_log_experiment
 
 # Build summary message safely using env vars
 AR_STATE_FILE="$STATE_FILE" AR_METRICS="$metrics" AR_DECISION="$decision" python3 -c "

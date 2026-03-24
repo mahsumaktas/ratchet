@@ -41,6 +41,7 @@ if [ "$TOOL_NAME" = "Bash" ]; then
   if [[ "$COMMAND" == *"git commit"* ]]; then
     if [ "$CURRENT_STATE" != "COMMIT" ]; then
       echo "ENGELLENDI: git commit only allowed in COMMIT state. Current: $CURRENT_STATE" >&2
+      ar_log "warn" "state-enforcer" "blocked" "tool=$TOOL_NAME" "state=$CURRENT_STATE"
       exit 2
     fi
   fi
@@ -52,5 +53,7 @@ if [ "$TOOL_NAME" = "Bash" ]; then
     fi
   fi
 fi
+
+ar_log "debug" "state-enforcer" "allowed" "tool=$TOOL_NAME"
 
 exit 0

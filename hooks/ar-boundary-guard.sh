@@ -29,6 +29,7 @@ matched_pattern=$(ar_check_boundary "$REL_PATH" "$STATE_FILE")
 
 if [ -n "$matched_pattern" ]; then
   echo "ENGELLENDI: '$REL_PATH' matches never_touch pattern '$matched_pattern'" >&2
+  ar_log "warn" "boundary-guard" "blocked" "file=$REL_PATH" "pattern=$matched_pattern"
   exit 2
 fi
 

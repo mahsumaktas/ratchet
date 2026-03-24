@@ -47,14 +47,32 @@ for key in ['test', 'lint', 'type', 'build']:
     except (ValueError, TypeError):
         pass
 
+# Check if all metrics errored
+error_count = sum(1 for k in ['test','lint','type','build'] if latest.get(k,'') == 'error')
+total_count = sum(1 for k in ['test','lint','type','build'] if latest.get(k,''))
+
 if not guard_ok:
     decision, reason = 'DISCARD', 'guard command failed'
+elif total_count > 0 and error_count == total_count:
+    decision, reason = 'DISCARD', 'all metrics errored'
 elif worsened:
     decision, reason = 'DISCARD', 'metrics worsened'
 elif improved:
     decision, reason = 'KEEP', 'metrics improved'
 else:
-    decision, reason = 'KEEP', 'metrics same (check code size for final judgment)'
+    # Metrics same — check code size
+    import subprocess, re
+    root = os.path.dirname(os.path.dirname(os.environ['AR_STATE']))
+    stat = subprocess.run(['git', 'diff', '--stat'], capture_output=True, text=True, cwd=root).stdout
+    m_ins = re.search(r'(\d+) insertion', stat)
+    m_del = re.search(r'(\d+) deletion', stat)
+    ins = int(m_ins.group(1)) if m_ins else 0
+    dels = int(m_del.group(1)) if m_del else 0
+    net = ins - dels
+    if net > 0:
+        decision, reason = 'DISCARD', f'metrics same but code grew (+{net} lines)'
+    else:
+        decision, reason = 'KEEP', f'metrics same, code reduced ({net} lines)' if net < 0 else 'metrics same, no size change'
 
 deltas = []
 for key in ['test', 'lint', 'type', 'build']:
@@ -71,3 +89,11 @@ print(json.dumps({
     'worsened': worsened
 }, indent=2))
 " 2>/dev/null
+
+# Threshold-based self-review trigger
+eval "$(ar_state_get_multi consecutive_discards experiment 2>/dev/null)" || true
+consec="${consecutive_discards:-0}"
+total="${experiment:-0}"
+if [ "${consec:-0}" -ge 5 ] || ([ "${total:-0}" -gt 0 ] && [ $((total % 20)) -eq 0 ]); then
+  "$SCRIPT_DIR/ar-self-review.sh" threshold 2>/dev/null || true
+fi
