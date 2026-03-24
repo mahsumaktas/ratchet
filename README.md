@@ -346,6 +346,13 @@ Removes hooks, scripts, and settings.json entries. Project data (`.autoresearch/
 
 ## Changelog
 
+### v3.0 (2026-03-24)
+- **Parallel worktree experiments:** Run N hypotheses simultaneously in isolated git worktrees, compare results, pick the best (`ar-parallel.sh run 3`)
+- **CI/CD exec mode:** Non-interactive mode with JSON output and exit codes for pipeline integration (`ar-ci.sh --max-experiments 10 --budget 5.00`)
+- **GitHub Actions workflow:** Ready-to-use `.github/workflows/ratchet.yml` with weekly schedule + manual dispatch
+- **Benchmark suite:** Performance benchmarks + stress tests (`tests/benchmark.sh`) — all components <15ms/call
+- **Stress tested:** 100x ar_log, 50x lessons, 50x cost tracking — 100% success rate
+
 ### v2.1 (2026-03-24)
 - **Cross-run lessons:** Persistent `lessons.jsonl` — learnings carry forward across sessions with 50-entry cap and 30-day time-decay
 - **Token/cost tracking:** Per-session token count + USD cost estimate with budget limits (`ar-cost.sh check <budget>`)

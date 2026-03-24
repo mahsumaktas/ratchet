@@ -1,0 +1,74 @@
+name: Ratchet Improvement
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Ratchet mode'
+        required: false
+        default: 'run'
+        type: choice
+        options:
+          - run
+          - fix
+          - security
+      max_experiments:
+        description: 'Max experiments'
+        required: false
+        default: '10'
+      budget:
+        description: 'Max budget (USD)'
+        required: false
+        default: '5.00'
+
+  schedule:
+    - cron: '0 2 * * 1'  # Every Monday at 2 AM
+
+jobs:
+  ratchet:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run Ratchet
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          bash scripts/ar-ci.sh \
+            --mode ${{ inputs.mode || 'run' }} \
+            --max-experiments ${{ inputs.max_experiments || '10' }} \
+            --budget ${{ inputs.budget || '5.00' }} \
+            --output ratchet-results.json
+
+      - name: Upload Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ratchet-results
+          path: ratchet-results.json
+
+      - name: Create PR if improvements
+        if: success()
+        run: |
+          git config user.name "Ratchet Bot"
+          git config user.email "ratchet@noreply.github.com"
+          BRANCH="ratchet/improvement-$(date +%Y%m%d-%H%M)"
+          git checkout -b "$BRANCH"
+          git add -A
+          git diff --cached --quiet || {
+            git commit -m "feat: ratchet improvements ($(date +%Y-%m-%d))"
+            git push origin "$BRANCH"
+            gh pr create --title "Ratchet improvements" --body "Automated improvements by Ratchet" --base main
+          }
