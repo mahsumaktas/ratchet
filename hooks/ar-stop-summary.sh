@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # ar-stop-summary.sh — Stop hook: emits autoresearch progress summary
+set -euo pipefail
 
 [ -f "/tmp/ar-active-${PPID}.txt" ] || exit 0
 

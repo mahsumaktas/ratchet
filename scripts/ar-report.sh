@@ -16,9 +16,9 @@ ar_dir="$root/.autoresearch"
 
 case "$cmd" in
   progress)
-    python3 -c "
-import json
-with open('$ar_dir/state.json') as f:
+    AR_DIR_PATH="$ar_dir" python3 -c "
+import json, os
+with open(os.path.join(os.environ['AR_DIR_PATH'], 'state.json')) as f:
     s = json.load(f)
 mode = s.get('mode', '?')
 exp = s.get('experiment', 0)
@@ -33,9 +33,9 @@ print(f'AR:{mode}#{exp} K:{kept}({pct}%) D:{disc} [{state}] strat:{strategy}')
     ;;
 
   summary)
-    python3 -c "
-import json
-with open('$ar_dir/state.json') as f:
+    AR_DIR_PATH="$ar_dir" python3 -c "
+import json, os
+with open(os.path.join(os.environ['AR_DIR_PATH'], 'state.json')) as f:
     s = json.load(f)
 
 baseline = s.get('baseline', {})

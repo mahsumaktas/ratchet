@@ -28,11 +28,11 @@ case "$cmd" in
 
     if ar_validate_transition "$current" "$target"; then
       ar_state_set "state" "\"$target\""
-      ar_log "info" "transition: $current -> $target"
+      ar_log "info" "state" "transition" "from=$current" "to=$target"
       echo "$target"
     else
       echo "ERROR: Invalid transition $current -> $target" >&2
-      ar_log "error" "invalid transition: $current -> $target"
+      ar_log "error" "state" "invalid-transition" "from=$current" "to=$target"
       exit 1
     fi
     ;;
@@ -43,9 +43,9 @@ case "$cmd" in
       exit 1
     fi
 
-    python3 -c "
-import json
-with open('$(ar_state_path)') as f:
+    AR_STATE_FILE="$(ar_state_path)" python3 -c "
+import json, os
+with open(os.environ['AR_STATE_FILE']) as f:
     s = json.load(f)
 print(f\"Mode:       {s.get('mode','?')}\")
 print(f\"State:      {s.get('state','?')}\")

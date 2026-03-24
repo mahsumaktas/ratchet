@@ -217,8 +217,6 @@ echo "$PROJECT_ROOT" > "$AR_ACTIVE_FLAG"
 echo "$PROJECT_ROOT" > "$AR_ROOT_CACHE"
 
 # --- Transition to SELECT_TARGET ---
-# shellcheck source=scripts/_lib.sh
-source "$SCRIPT_DIR/_lib.sh"
 ar_state_set "state" '"SELECT_TARGET"'
 ar_log "info" "bootstrap" "complete" "mode=$MODE" "branch=$BRANCH"
 

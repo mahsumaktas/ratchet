@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # ar-compact-inject.sh — PostCompact hook: injects autoresearch state after context compaction
+set -euo pipefail
 
 [ -f "/tmp/ar-active-${PPID}.txt" ] || exit 0
 

@@ -2,6 +2,7 @@
 # ar-boundary-guard.sh — PreToolUse hook: blocks edits to never_touch files
 # Matcher: Write|Edit|MultiEdit
 # Exit 2 = HARD BLOCK when file matches never_touch glob
+set -euo pipefail
 
 # Fast exit if autoresearch not active
 [ -f "/tmp/ar-active-${PPID}.txt" ] || exit 0

@@ -22,8 +22,9 @@ case "$cmd" in
     results_file="$root/.autoresearch/parallel-results.json"
 
     # Default strategies if none provided
-    strategies=("${@:-default low-hanging-fruit deep-refactor security dead-code}")
-    if [ $# -eq 0 ]; then
+    if [ $# -gt 0 ]; then
+      strategies=("$@")
+    else
       strategies=(default low-hanging-fruit deep-refactor security dead-code)
     fi
 

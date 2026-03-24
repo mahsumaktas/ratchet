@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ar-session-restore.sh — SessionStart hook: restores autoresearch state
 # Matcher: startup|resume
+set -euo pipefail
 
 STATE_FILE="$PWD/.autoresearch/state.json"
 [ -f "$STATE_FILE" ] || exit 0
@@ -54,12 +55,7 @@ SCRIPT_DIR="${HOME}/.claude/skills/autoresearch/scripts"
 if [ -f "$SCRIPT_DIR/_lib.sh" ]; then
   # shellcheck source=scripts/_lib.sh
   source "$SCRIPT_DIR/_lib.sh"
-  CURRENT_STATE=$(AR_PATH="$STATE_FILE" python3 -c "
-import json, os
-with open(os.environ['AR_PATH']) as f:
-    print(json.load(f).get('state',''))
-" 2>/dev/null)
-  ar_log "info" "session-restore" "restored" "state=$CURRENT_STATE"
+  ar_log "info" "session-restore" "restored" "state=$STATE"
 fi
 
 exit 0

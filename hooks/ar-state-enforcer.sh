@@ -2,6 +2,7 @@
 # ar-state-enforcer.sh — PreToolUse hook: blocks invalid state transitions
 # Matcher: Write|Edit|MultiEdit|Bash
 # Exit 2 = HARD BLOCK, Exit 0 = allow, systemMessage = soft warning
+set -euo pipefail
 
 # Fast exit if autoresearch not active (<1ms)
 [ -f "/tmp/ar-active-${PPID}.txt" ] || exit 0

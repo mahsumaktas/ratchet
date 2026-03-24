@@ -51,7 +51,8 @@ if has_ext('.sh') and not env['languages']:
 # --- Test Runners ---
 if exists('package.json'):
     try:
-        pkg = json.load(open(os.path.join(root, 'package.json')))
+        with open(os.path.join(root, 'package.json')) as pf:
+            pkg = json.load(pf)
         deps = {**pkg.get('devDependencies', {}), **pkg.get('dependencies', {})}
         scripts = pkg.get('scripts', {})
         if 'vitest' in deps: env['test_runners'].append('vitest')
@@ -59,7 +60,7 @@ if exists('package.json'):
         elif 'mocha' in deps: env['test_runners'].append('mocha')
         elif 'test' in scripts: env['test_runners'].append('npm-test')
     except: pass
-if exists('pytest.ini', 'conftest.py') or (exists('pyproject.toml') and 'pytest' in open(os.path.join(root, 'pyproject.toml')).read()):
+if exists('pytest.ini', 'conftest.py') or (exists('pyproject.toml') and 'pytest' in (open(os.path.join(root, 'pyproject.toml')).read() if exists('pyproject.toml') else '')):
     env['test_runners'].append('pytest')
 if exists('Cargo.toml'): env['test_runners'].append('cargo-test')
 if exists('go.mod'): env['test_runners'].append('go-test')

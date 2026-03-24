@@ -33,7 +33,7 @@ case "$cmd" in
     if [ -n "$val" ]; then
       echo "$val"
     else
-      echo "$DEFAULT_CONFIG" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('$field',''))" 2>/dev/null
+      echo "$DEFAULT_CONFIG" | AR_FIELD="$field" python3 -c "import json,sys,os; d=json.load(sys.stdin); print(d.get(os.environ['AR_FIELD'],''))" 2>/dev/null
     fi
     ;;
 
@@ -46,10 +46,10 @@ case "$cmd" in
       exit 0
     fi
 
-    python3 -c "
-import json, sys
+    AR_CONFIG_PATH="$config_path" python3 -c "
+import json, sys, os
 try:
-    with open('$config_path') as f:
+    with open(os.environ['AR_CONFIG_PATH']) as f:
         d = json.load(f)
     required_types = {
         'mode': str,

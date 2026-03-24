@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ar-metrics-collector.sh — PostToolUse hook: auto-runs metrics after edit
 # Matcher: Write|Edit|MultiEdit
+set -euo pipefail
 
 # Fast exit if autoresearch not active
 [ -f "/tmp/ar-active-${PPID}.txt" ] || exit 0
@@ -45,6 +46,14 @@ decision=$("$SCRIPT_DIR/ar-decide.sh" "$guard_passed" 2>/dev/null) || decision='
 # Transition to DECIDE
 "$SCRIPT_DIR/ar-state.sh" transition DECIDE >/dev/null 2>&1 || true
 
+# Parse decision JSON (single python3 call instead of 2)
+eval "$(echo "$decision" | python3 -c "
+import json, sys, shlex
+d = json.load(sys.stdin)
+print(f'AR_DECISION={shlex.quote(d.get(\"decision\",\"\"))}')
+print(f'AR_REASON={shlex.quote(d.get(\"reason\",\"\"))}')
+" 2>/dev/null)" || { AR_DECISION=""; AR_REASON=""; }
+
 # Log experiment
 AR_EXP_ID=$(ar_state_get "experiment") \
 AR_STRATEGY=$(ar_state_get "strategy") \
@@ -52,8 +61,8 @@ AR_TARGET_FILE=$(ar_state_get "current_target" 2>/dev/null) \
 AR_METRICS_BEFORE=$(cat "$ROOT/.autoresearch/metrics/best.json" 2>/dev/null) \
 AR_METRICS_AFTER="$metrics" \
 AR_GUARD_PASSED="$guard_passed" \
-AR_DECISION=$(echo "$decision" | python3 -c "import json,sys; print(json.load(sys.stdin).get('decision',''))" 2>/dev/null) \
-AR_REASON=$(echo "$decision" | python3 -c "import json,sys; print(json.load(sys.stdin).get('reason',''))" 2>/dev/null) \
+AR_DECISION="$AR_DECISION" \
+AR_REASON="$AR_REASON" \
   ar_log_experiment
 
 # Build summary message safely using env vars
