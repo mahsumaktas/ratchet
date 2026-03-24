@@ -346,6 +346,10 @@ Removes hooks, scripts, and settings.json entries. Project data (`.autoresearch/
 
 ## Changelog
 
+### v4.0 (2026-03-24)
+- **Multi-agent debate:** 5-persona evaluation (Competitor, Analyst, Coach, Architect, Curator) for change quality assessment (`ar-debate.sh evaluate`)
+- **Outer loop (meta-optimization):** Cross-session performance analysis, auto-tunes strategy ordering and removes failing strategies (`ar-outer-loop.sh optimize`)
+
 ### v3.0 (2026-03-24)
 - **Parallel worktree experiments:** Run N hypotheses simultaneously in isolated git worktrees, compare results, pick the best (`ar-parallel.sh run 3`)
 - **CI/CD exec mode:** Non-interactive mode with JSON output and exit codes for pipeline integration (`ar-ci.sh --max-experiments 10 --budget 5.00`)
