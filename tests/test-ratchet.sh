@@ -179,12 +179,37 @@ assert config['mode'] == 'run', 'mode modified!'
 print('Config safety OK')
 "
 
-# --- Test 7: Uninstall script ---
+# --- Test 7: v2.1 — Lessons ---
+echo ""
+echo "=== v2.1: Lessons ==="
+LESSONS_DIR="$TEST_DIR/.autoresearch"
+mkdir -p "$LESSONS_DIR"
+
+check "ar-lessons: add" "bash $SCRIPTS/ar-lessons.sh add 'test lesson from v2.1'"
+check "ar-lessons: read" "bash $SCRIPTS/ar-lessons.sh read | grep -q 'test lesson'"
+check "ar-lessons: prune" "bash $SCRIPTS/ar-lessons.sh prune"
+check "ar-lessons: syntax" "bash -n $SCRIPTS/ar-lessons.sh"
+
+# --- Test 8: v2.1 — Cost Tracking ---
+echo ""
+echo "=== v2.1: Cost Tracking ==="
+check "ar-cost: record" "bash $SCRIPTS/ar-cost.sh record 5000"
+check "ar-cost: total" "bash $SCRIPTS/ar-cost.sh total | grep -q 'tokens'"
+check "ar-cost: check budget" "bash $SCRIPTS/ar-cost.sh check 100"
+check "ar-cost: syntax" "bash -n $SCRIPTS/ar-cost.sh"
+
+# --- Test 9: v2.1 — Environment Probing ---
+echo ""
+echo "=== v2.1: Environment Probing ==="
+check "ar-probe: detects shell" "bash $SCRIPTS/ar-probe.sh $TEST_DIR 2>/dev/null || bash $SCRIPTS/ar-probe.sh /tmp/ratchet-push | python3 -c 'import json,sys; d=json.load(sys.stdin); assert len(d)>0'"
+check "ar-probe: syntax" "bash -n $SCRIPTS/ar-probe.sh"
+
+# --- Test 10: Uninstall script ---
 echo ""
 echo "=== Uninstall ==="
-check "uninstall.sh: syntax valid" "bash -n $HOME/.claude/skills/autoresearch/uninstall.sh"
+check "uninstall.sh: syntax valid" "bash -n $SCRIPTS/../uninstall.sh"
 
-# --- Test 8: All hook files syntax ---
+# --- All hook files syntax ---
 echo ""
 echo "=== Hook Syntax ==="
 check "ar-boundary-guard.sh" "bash -n $HOOKS/ar-boundary-guard.sh"
@@ -201,6 +226,9 @@ check "_lib.sh" "bash -n $SCRIPTS/_lib.sh"
 check "ar-init.sh" "bash -n $SCRIPTS/ar-init.sh"
 check "ar-decide.sh" "bash -n $SCRIPTS/ar-decide.sh"
 check "ar-self-review.sh" "bash -n $SCRIPTS/ar-self-review.sh"
+check "ar-lessons.sh" "bash -n $SCRIPTS/ar-lessons.sh"
+check "ar-cost.sh" "bash -n $SCRIPTS/ar-cost.sh"
+check "ar-probe.sh" "bash -n $SCRIPTS/ar-probe.sh"
 
 # Cleanup
 rm -rf "$TEST_DIR" "/tmp/ar-root-$$.txt" 2>/dev/null

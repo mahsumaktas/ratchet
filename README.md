@@ -133,6 +133,49 @@ But guard (npm test) fails → DISCARD ✗
 
 The guard ensures you never break tests while fixing lint, never break the build while adding types.
 
+### Cross-run Learning (v2.1)
+
+Ratchet remembers what worked and what didn't across sessions:
+
+```
+.autoresearch/lessons.jsonl
+```
+
+- **50-entry cap** with FIFO eviction
+- **30-day time-decay** — old lessons auto-pruned at bootstrap
+- **Auto-populated** — KEEP decisions record strategy + file + reason
+- **Loaded into CHECKPOINT.md** — Claude sees previous learnings on restart
+
+### Token & Cost Tracking (v2.1)
+
+Track spending per ratchet session:
+
+```bash
+# During session — auto-tracked per experiment
+# At session end — summary in stop hook:
+# [RATCHET] 12 experiments (8 kept / 4 discarded) | Cost: 45K tokens, ~$0.32
+
+# Budget enforcement:
+# Set in config: "max_budget_usd": 5.00
+# Ratchet stops when budget exceeded
+```
+
+### Environment Probing (v2.1)
+
+At bootstrap, `ar-probe.sh` auto-detects:
+
+| Category | Detected |
+|----------|----------|
+| Languages | Node.js, TypeScript, Python, Rust, Go, Ruby, Java, Shell |
+| Test runners | jest, vitest, mocha, pytest, cargo test, go test |
+| Linters | eslint, biome, ruff, clippy, go vet, rubocop |
+| Type checkers | tsc, mypy, pyright |
+| Frameworks | Next.js, Nuxt, Vite, Angular, Svelte, Django, Flask |
+| CI | GitHub Actions, GitLab CI, Jenkins, CircleCI |
+| Monorepo | lerna, pnpm workspaces, Cargo workspaces, nx |
+
+Results saved to `state.json` as `environment` field — used for smarter strategy selection.
+
 ### Mechanical Decision Engine
 
 The keep/discard decision is made by `ar-decide.sh` — a deterministic script, not an LLM judgment:
@@ -302,6 +345,13 @@ Removes hooks, scripts, and settings.json entries. Project data (`.autoresearch/
 - `git`
 
 ## Changelog
+
+### v2.1 (2026-03-24)
+- **Cross-run lessons:** Persistent `lessons.jsonl` — learnings carry forward across sessions with 50-entry cap and 30-day time-decay
+- **Token/cost tracking:** Per-session token count + USD cost estimate with budget limits (`ar-cost.sh check <budget>`)
+- **Environment probing:** Auto-detect languages, test runners, linters, frameworks, CI, monorepo status at bootstrap
+- **Validator subagent:** Haiku-powered read-only verification every 5 experiments (SKILL.md instruction)
+- **Incremental metrics:** Only lint affected files instead of full suite (faster feedback loop)
 
 ### v2 (2026-03-24)
 - **Logging:** 3-tier JSONL logging (events, experiments, insights) with auto-rotation

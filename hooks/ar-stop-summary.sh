@@ -12,9 +12,12 @@ SCRIPTS_DIR="${HOME}/.claude/skills/autoresearch/scripts"
 
 PROGRESS=$("$SCRIPTS_DIR/ar-report.sh" progress 2>/dev/null || echo "?")
 
-AR_PROGRESS="$PROGRESS" python3 -c "
+# Cost report
+COST=$("$SCRIPTS_DIR/ar-cost.sh" total 2>/dev/null || echo "N/A")
+
+AR_PROGRESS="$PROGRESS" AR_COST="$COST" python3 -c "
 import json, os
-print(json.dumps({'systemMessage': '[RATCHET PROGRESS] ' + os.environ['AR_PROGRESS']}))
+print(json.dumps({'systemMessage': '[RATCHET PROGRESS] ' + os.environ['AR_PROGRESS'] + ' | Cost: ' + os.environ.get('AR_COST', 'N/A')}))
 " 2>/dev/null
 
 exit 0

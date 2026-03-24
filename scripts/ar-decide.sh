@@ -11,7 +11,7 @@ state_path=$(ar_state_path)
 latest_path="$root/.autoresearch/metrics/latest.json"
 guard_passed="${1:-true}"
 
-AR_STATE="$state_path" AR_LATEST="$latest_path" AR_GUARD="$guard_passed" python3 -c "
+decision_output=$(AR_STATE="$state_path" AR_LATEST="$latest_path" AR_GUARD="$guard_passed" python3 -c "
 import json, os
 
 with open(os.environ['AR_STATE']) as f:
@@ -88,7 +88,9 @@ print(json.dumps({
     'improved': improved,
     'worsened': worsened
 }, indent=2))
-" 2>/dev/null
+" 2>/dev/null)
+
+echo "$decision_output"
 
 # Threshold-based self-review trigger
 eval "$(ar_state_get_multi consecutive_discards experiment 2>/dev/null)" || true
@@ -96,4 +98,14 @@ consec="${consecutive_discards:-0}"
 total="${experiment:-0}"
 if [ "${consec:-0}" -ge 5 ] || ([ "${total:-0}" -gt 0 ] && [ $((total % 20)) -eq 0 ]); then
   "$SCRIPT_DIR/ar-self-review.sh" threshold 2>/dev/null || true
+fi
+
+# Record lesson from decision
+dec_value=$(echo "$decision_output" 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin).get('decision',''))" 2>/dev/null) || dec_value=""
+dec_reason=$(echo "$decision_output" 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin).get('reason',''))" 2>/dev/null) || dec_reason=""
+strategy=$(ar_state_get "strategy" 2>/dev/null || echo "default")
+target=$(ar_state_get "current_target" 2>/dev/null || echo "unknown")
+
+if [ "$dec_value" = "KEEP" ]; then
+  "$SCRIPT_DIR/ar-lessons.sh" add "KEEP: strategy=$strategy file=$target reason=$dec_reason" 2>/dev/null || true
 fi

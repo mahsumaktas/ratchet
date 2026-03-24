@@ -108,6 +108,9 @@ git checkout -b "$BRANCH" 2>/dev/null || {
 # --- Detect frozen commands ---
 frozen_commands=$(detect_commands)
 
+# Environment probing
+PROBE_RESULT=$("$SCRIPT_DIR/ar-probe.sh" "$PROJECT_ROOT" 2>/dev/null || echo '{}')
+
 # --- Run baseline metrics ---
 echo "Running baseline metrics..." >&2
 baseline_results="{}"
@@ -126,6 +129,10 @@ done
 
 # --- Create .autoresearch directory ---
 mkdir -p "$AR_DIR/metrics"
+
+# Prune old lessons and load existing ones
+"$SCRIPT_DIR/ar-lessons.sh" prune 2>/dev/null || true
+EXISTING_LESSONS=$("$SCRIPT_DIR/ar-lessons.sh" read 2>/dev/null || echo "")
 
 # --- Write state.json ---
 cat > "$AR_DIR/state.json" << STATEJSON
@@ -148,6 +155,7 @@ cat > "$AR_DIR/state.json" << STATEJSON
   "never_touch": $never_touch,
   "failed_targets": {},
   "discoveries": []
+  ,"environment": $PROBE_RESULT
 }
 STATEJSON
 
@@ -175,6 +183,14 @@ cat > "$AR_DIR/CHECKPOINT.md" << 'CHECKPOINT'
 ## Current Strategy
 `default` — standard improvement targeting highest-impact files first
 CHECKPOINT
+
+if [ -n "$EXISTING_LESSONS" ]; then
+  cat >> "$AR_DIR/CHECKPOINT.md" << LESSONS
+
+## Lessons from Previous Runs
+$EXISTING_LESSONS
+LESSONS
+fi
 
 # --- Write NOTES.md ---
 cat > "$AR_DIR/NOTES.md" << NOTES
