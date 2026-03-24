@@ -1,0 +1,30 @@
+{
+  "mode": "run",
+  "never_touch": [
+    "*.lock",
+    "node_modules/**",
+    "vendor/**",
+    ".env*",
+    "*.min.js",
+    "*.min.css",
+    "dist/**",
+    "build/**",
+    "migrations/**"
+  ],
+  "guard_command": "npm test",
+  "parallel_workers": 1,
+  "max_experiments": null,
+  "notify_webhook": "",
+  "consecutive_discard_limit": 5,
+  "hard_stop_discard_limit": 10,
+  "validator_interval": 5,
+  "auto_checkpoint_interval": 3,
+  "strategy_rotation": [
+    "default",
+    "low-hanging-fruit",
+    "deep-refactor",
+    "security-sweep",
+    "dead-code-cleanup",
+    "discovery-driven"
+  ]
+}

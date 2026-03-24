@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Ratchet Configuration",
+  "description": "Project-level configuration for Ratchet autoresearch sessions",
+  "type": "object",
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["run", "debug", "fix", "security", "predict", "plan"],
+      "default": "run",
+      "description": "Operating mode for the autoresearch session"
+    },
+    "never_touch": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["*.lock", "node_modules/**", "vendor/**", ".env*", "*.min.js", "*.min.css", "dist/**", "build/**"],
+      "description": "Glob patterns for files that must never be modified during experiments"
+    },
+    "guard_command": {
+      "type": "string",
+      "default": "",
+      "description": "Command that must always pass after every change. Empty = use detected test command."
+    },
+    "frozen_commands": {
+      "type": "object",
+      "properties": {
+        "test": { "type": "string" },
+        "lint": { "type": "string" },
+        "type": { "type": "string" },
+        "build": { "type": "string" }
+      },
+      "description": "Override auto-detected metric commands. Leave empty for auto-detection."
+    },
+    "parallel_workers": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "default": 1,
+      "description": "Number of parallel experiment workers"
+    },
+    "max_experiments": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "default": null,
+      "description": "Maximum experiments before stopping. null = infinite (until user stops)"
+    },
+    "notify_webhook": {
+      "type": "string",
+      "default": "",
+      "description": "Slack/Discord webhook URL for progress notifications"
+    },
+    "consecutive_discard_limit": {
+      "type": "integer",
+      "minimum": 3,
+      "maximum": 20,
+      "default": 5,
+      "description": "Number of consecutive discards before switching strategy"
+    },
+    "hard_stop_discard_limit": {
+      "type": "integer",
+      "minimum": 5,
+      "maximum": 50,
+      "default": 10,
+      "description": "Number of consecutive discards before full stop"
+    },
+    "validator_interval": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 5,
+      "description": "Run validator subagent every N experiments"
+    },
+    "auto_checkpoint_interval": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 3,
+      "description": "Update CHECKPOINT.md every N experiments"
+    },
+    "strategy_rotation": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["default", "low-hanging-fruit", "deep-refactor", "security-sweep", "dead-code-cleanup", "discovery-driven"],
+      "description": "Order of strategy rotation when stuck"
+    }
+  },
+  "additionalProperties": false
+}

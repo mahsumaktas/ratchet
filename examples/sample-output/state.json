@@ -1,0 +1,41 @@
+{
+  "version": 3,
+  "project": "my-app",
+  "branch": "autoresearch/20260324-143022",
+  "mode": "fix",
+  "start": "2026-03-24T14:30:22Z",
+  "experiment": 14,
+  "state": "SELECT_TARGET",
+  "kept": 8,
+  "discarded": 6,
+  "consecutive_discards": 1,
+  "strategy": "low-hanging-fruit",
+  "max_experiments": 30,
+  "baseline": {
+    "test": "42",
+    "lint": "23",
+    "type": "7",
+    "build": "0"
+  },
+  "best": {
+    "test": "48",
+    "lint": "11",
+    "type": "3",
+    "build": "0"
+  },
+  "frozen_commands": {
+    "test": "npm test 2>&1",
+    "lint": "npx eslint . --format compact 2>&1 | wc -l",
+    "type": "npx tsc --noEmit 2>&1 | grep -c 'error TS' || true",
+    "build": "npm run build 2>&1; echo $?",
+    "guard": "npm test 2>&1"
+  },
+  "never_touch": ["*.lock", "node_modules/**", "dist/**", ".env*"],
+  "failed_targets": {
+    "src/legacy/parser.ts": 3
+  },
+  "discoveries": [
+    "Found unused 300-line module: src/utils/deprecated-helpers.ts",
+    "Database connection pool not properly closed in tests"
+  ]
+}

@@ -1,0 +1,16 @@
+exp	commit	tests	lint	types	build	guard	status	file	description	rationale
+0	a1b2c3d	42	23	7	0	pass	baseline	-	initial state	-
+1	e4f5g6h	42	21	7	0	pass	keep	src/utils/string.ts	removed 3 unused imports	highest lint errors
+2	-	42	23	7	0	pass	discard	src/api/routes.ts	attempted error handling refactor	added complexity without reducing errors
+3	i7j8k9l	43	21	7	0	pass	keep	src/tests/auth.test.ts	added missing edge case test	improve coverage
+4	m0n1o2p	43	19	7	0	pass	keep	src/components/Form.tsx	fixed 2 eslint warnings	low-hanging-fruit strategy
+5	-	43	21	7	0	fail	discard	src/api/middleware.ts	guard failed: test broke	lint improved but tests regressed
+6	q3r4s5t	43	17	6	0	pass	keep	src/types/index.ts	fixed type annotation	type error reduction
+7	-	43	17	6	0	pass	discard	src/legacy/parser.ts	code too complex to simplify	3rd discard, file blacklisted
+8	u6v7w8x	44	15	5	0	pass	keep	src/utils/date.ts	simplified date formatting	discovery: unused helper nearby
+9	y9z0a1b	45	14	4	0	pass	keep	src/services/email.ts	added null check + test	P0 bug fix from discovery
+10	-	45	14	4	0	pass	discard	src/hooks/useAuth.ts	simplification increased lines	code grew, same metrics
+11	c2d3e4f	46	13	4	0	pass	keep	src/api/users.ts	removed dead code branch	dead-code-cleanup
+12	g5h6i7j	47	12	3	0	pass	keep	src/components/Table.tsx	fixed type error + unused var	fix mode target
+13	-	47	12	3	0	pass	discard	src/config/index.ts	attempted config simplification	no metric improvement
+14	k8l9m0n	48	11	3	0	pass	keep	src/api/auth.ts	security: parameterized SQL query	security-sweep discovery
