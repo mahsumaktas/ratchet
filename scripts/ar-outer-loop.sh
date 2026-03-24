@@ -148,7 +148,7 @@ if actions:
     try: shutil.copy2(config_path, backup)
     except: pass
 
-    # Never touch protected fields
+    # Never touch protected fields — abort write if restore fails
     protected = {'guard_command', 'frozen_commands', 'mode', 'max_experiments'}
     try:
         with open(config_path) as f:
@@ -156,7 +156,9 @@ if actions:
         for field in protected:
             if field in original:
                 config[field] = original[field]
-    except: pass
+    except Exception as e:
+        print(json.dumps({'error': f'cannot restore protected fields: {e}', 'aborted': True}))
+        import sys; sys.exit(1)
 
     with open(config_path, 'w') as f:
         json.dump(config, f, indent=2, ensure_ascii=False)
