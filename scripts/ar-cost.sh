@@ -70,9 +70,9 @@ with open(cost_path, 'w') as f:
 
   total)
     _ensure_cost_file
-    python3 -c "
-import json
-with open('$COST_FILE') as f:
+    AR_COST_FILE="$COST_FILE" python3 -c "
+import json, os
+with open(os.environ['AR_COST_FILE']) as f:
     d = json.load(f)
 tokens = d.get('session_tokens', 0)
 cost = d.get('total_cost_usd', 0)
@@ -90,9 +90,9 @@ print(f'{t_str} tokens, ~\${cost:.2f}, {exps} experiments')
   check)
     budget="${1:-0}"
     _ensure_cost_file
-    AR_BUDGET="$budget" python3 -c "
+    AR_BUDGET="$budget" AR_COST_FILE="$COST_FILE" python3 -c "
 import json, os, sys
-with open('$COST_FILE') as f:
+with open(os.environ['AR_COST_FILE']) as f:
     d = json.load(f)
 cost = d.get('total_cost_usd', 0)
 budget = float(os.environ['AR_BUDGET'])

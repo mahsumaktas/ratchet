@@ -100,11 +100,17 @@ if [ "${consec:-0}" -ge 5 ] || ([ "${total:-0}" -gt 0 ] && [ $((total % 20)) -eq
   "$SCRIPT_DIR/ar-self-review.sh" threshold 2>/dev/null || true
 fi
 
-# Record lesson from decision
-dec_value=$(echo "$decision_output" 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin).get('decision',''))" 2>/dev/null) || dec_value=""
-dec_reason=$(echo "$decision_output" 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin).get('reason',''))" 2>/dev/null) || dec_reason=""
-strategy=$(ar_state_get "strategy" 2>/dev/null || echo "default")
-target=$(ar_state_get "current_target" 2>/dev/null || echo "unknown")
+# Record lesson from decision (single python3 + single state read)
+eval "$(echo "$decision_output" 2>/dev/null | python3 -c "
+import json, sys, shlex
+d = json.load(sys.stdin)
+print(f'dec_value={shlex.quote(d.get(\"decision\",\"\"))}')
+print(f'dec_reason={shlex.quote(d.get(\"reason\",\"\"))}')
+" 2>/dev/null)" || { dec_value=""; dec_reason=""; }
+
+eval "$(ar_state_get_multi strategy current_target 2>/dev/null)" || true
+strategy="${strategy:-default}"
+target="${current_target:-unknown}"
 
 if [ "$dec_value" = "KEEP" ]; then
   "$SCRIPT_DIR/ar-lessons.sh" add "KEEP: strategy=$strategy file=$target reason=$dec_reason" 2>/dev/null || true

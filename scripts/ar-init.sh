@@ -154,8 +154,8 @@ cat > "$AR_DIR/state.json" << STATEJSON
   "frozen_commands": $frozen_commands,
   "never_touch": $never_touch,
   "failed_targets": {},
-  "discoveries": []
-  ,"environment": $PROBE_RESULT
+  "discoveries": [],
+  "environment": $PROBE_RESULT
 }
 STATEJSON
 
