@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # ar-guard.sh — Guard command runner for Ratchet
 # Usage: ar-guard.sh run
-# Runs the guard command and outputs JSON result.
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -15,19 +14,18 @@ if [ -z "$guard_cmd" ]; then
   exit 0
 fi
 
-start_ms=$(python3 -c "import time; print(int(time.time()*1000))" 2>/dev/null)
-output=$(cd "$root" && timeout 120 bash -c "$guard_cmd" 2>&1) && passed=true || passed=false
-end_ms=$(python3 -c "import time; print(int(time.time()*1000))" 2>/dev/null)
-duration=$((end_ms - start_ms))
+start_s=$(date +%s)
+output=$(cd "$root" && ar_timeout 120 bash -c "$guard_cmd" 2>&1) && passed=true || passed=false
+end_s=$(date +%s)
+duration_ms=$(( (end_s - start_s) * 1000 ))
 
-# Truncate output to 500 chars
-output_short=$(echo "$output" | tail -20 | head -c 500)
-
-python3 -c "
-import json
+# Build JSON safely using env vars
+AR_PASSED="$passed" AR_OUTPUT="$output" AR_DURATION="$duration_ms" python3 -c "
+import json, os
+output = os.environ['AR_OUTPUT'][:500]  # truncate
 print(json.dumps({
-    'passed': $( [ \"$passed\" = true ] && echo 'True' || echo 'False' ),
-    'output': '''$output_short''',
-    'duration_ms': $duration
+    'passed': os.environ['AR_PASSED'] == 'true',
+    'output': output,
+    'duration_ms': int(os.environ['AR_DURATION'])
 }))
 " 2>/dev/null

@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # ar-metrics.sh — Frozen metric runner for Ratchet
-# Usage:
-#   ar-metrics.sh run      — run all frozen metrics, write latest.json
-#   ar-metrics.sh compare  — compare latest vs best, output delta JSON
+# Usage: ar-metrics.sh run | ar-metrics.sh compare
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -16,60 +14,60 @@ mkdir -p "$metrics_dir"
 case "$cmd" in
   run)
     state_path=$(ar_state_path)
-    frozen=$(python3 -c "
-import json
-with open('$state_path') as f:
-    d = json.load(f)
-fc = d.get('frozen_commands', {})
-for k, v in fc.items():
-    if k != 'guard' and v:
-        print(f'{k}={v}')
-" 2>/dev/null)
 
-    results="{}"
-    while IFS='=' read -r metric cmd_str; do
-      [ -z "$metric" ] && continue
-      result=$(cd "$root" && timeout 60 bash -c "$cmd_str" 2>/dev/null | tail -1 || echo "error")
-      results=$(echo "$results" | python3 -c "
-import json, sys
-d = json.load(sys.stdin)
-d['$metric'] = '''$result'''.strip()
-print(json.dumps(d))
-" 2>/dev/null)
-    done <<< "$frozen"
+    # Run all metrics and build results in a single python3 call
+    AR_STATE="$state_path" AR_ROOT="$root" AR_METRICS_DIR="$metrics_dir" python3 -c "
+import json, os, subprocess, datetime
 
-    # Write latest
-    echo "$results" > "$metrics_dir/latest.json"
+with open(os.environ['AR_STATE']) as f:
+    state = json.load(f)
+fc = state.get('frozen_commands', {})
+root = os.environ['AR_ROOT']
 
-    # Append to history
-    ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    echo "{\"ts\":\"$ts\",\"metrics\":$results}" >> "$metrics_dir/history.jsonl"
+results = {}
+for key, cmd in fc.items():
+    if key == 'guard' or not cmd:
+        continue
+    try:
+        proc = subprocess.run(['bash', '-c', cmd], capture_output=True, text=True,
+                            timeout=60, cwd=root)
+        output = proc.stdout.strip()
+        result = output.split('\n')[-1] if output else 'error'
+    except (subprocess.TimeoutExpired, Exception):
+        result = 'error'
+    results[key] = result
 
-    echo "$results"
+# Write latest
+metrics_dir = os.environ['AR_METRICS_DIR']
+with open(os.path.join(metrics_dir, 'latest.json'), 'w') as f:
+    json.dump(results, f)
+
+# Append to history
+ts = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+with open(os.path.join(metrics_dir, 'history.jsonl'), 'a') as f:
+    f.write(json.dumps({'ts': ts, 'metrics': results}) + '\n')
+
+print(json.dumps(results))
+" 2>/dev/null
     ;;
 
   compare)
-    python3 -c "
-import json
+    AR_LATEST="$metrics_dir/latest.json" AR_STATE="$(ar_state_path)" python3 -c "
+import json, os
 
-with open('$metrics_dir/latest.json') as f:
+with open(os.environ['AR_LATEST']) as f:
     latest = json.load(f)
-
-state_path = '$(ar_state_path)'
-with open(state_path) as f:
+with open(os.environ['AR_STATE']) as f:
     best = json.load(f).get('best', {})
 
 delta = {}
 for key in set(list(latest.keys()) + list(best.keys())):
-    l = latest.get(key, '')
-    b = best.get(key, '')
+    l, b = latest.get(key, ''), best.get(key, '')
     try:
-        li = int(l)
-        bi = int(b)
+        li, bi = int(l), int(b)
         delta[key] = {'previous': bi, 'current': li, 'change': li - bi}
     except (ValueError, TypeError):
         delta[key] = {'previous': str(b), 'current': str(l), 'change': 'N/A'}
-
 print(json.dumps(delta, indent=2))
 " 2>/dev/null
     ;;

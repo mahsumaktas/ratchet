@@ -5,7 +5,12 @@
 STATE_FILE="$PWD/.autoresearch/state.json"
 [ -f "$STATE_FILE" ] || exit 0
 
-STATE=$(python3 -c "import json; print(json.load(open('$STATE_FILE')).get('state',''))" 2>/dev/null)
+# Read state safely
+STATE=$(AR_PATH="$STATE_FILE" python3 -c "
+import json, os
+with open(os.environ['AR_PATH']) as f:
+    print(json.load(f).get('state',''))
+" 2>/dev/null)
 [ -n "$STATE" ] || exit 0
 [ "$STATE" = "STOP" ] && exit 0
 
@@ -13,10 +18,11 @@ STATE=$(python3 -c "import json; print(json.load(open('$STATE_FILE')).get('state
 echo "$PWD" > "/tmp/ar-active-${PPID}.txt"
 echo "$PWD" > "/tmp/ar-root-${PPID}.txt"
 
-# Build context summary
-SUMMARY=$(python3 -c "
-import json
-with open('$STATE_FILE') as f:
+# Build context summary safely via env var
+AR_STATE_FILE="$STATE_FILE" AR_PWD="$PWD" python3 -c "
+import json, os
+
+with open(os.environ['AR_STATE_FILE']) as f:
     s = json.load(f)
 
 mode = s.get('mode', '?')
@@ -27,27 +33,20 @@ disc = s.get('discarded', 0)
 strategy = s.get('strategy', 'default')
 branch = s.get('branch', '?')
 
-# Last 3 experiments from results.tsv
-import os
-tsv_path = os.path.join('$PWD', '.autoresearch', 'results.tsv')
+# Last 3 experiments
+tsv_path = os.path.join(os.environ['AR_PWD'], '.autoresearch', 'results.tsv')
 last_exps = ''
 if os.path.exists(tsv_path):
     with open(tsv_path) as f:
         lines = f.readlines()[-3:]
         last_exps = ' | '.join([l.strip()[:80] for l in lines])
 
-checkpoint_preview = ''
-cp_path = os.path.join('$PWD', '.autoresearch', 'CHECKPOINT.md')
-if os.path.exists(cp_path):
-    with open(cp_path) as f:
-        checkpoint_preview = f.read()[:500]
-
-msg = f'''[RATCHET SESSION RESTORED] Mode: {mode} | Experiment: {exp} | State: {state} | Kept: {kept} | Discarded: {disc} | Strategy: {strategy} | Branch: {branch}
-Last experiments: {last_exps}
-Read .autoresearch/CHECKPOINT.md and SKILL.md, then continue from state {state}. DO NOT restart bootstrap.'''
+msg = (f'[RATCHET SESSION RESTORED] Mode: {mode} | Experiment: {exp} | State: {state} '
+       f'| Kept: {kept} | Discarded: {disc} | Strategy: {strategy} | Branch: {branch}\n'
+       f'Last experiments: {last_exps}\n'
+       f'Read .autoresearch/CHECKPOINT.md and SKILL.md, then continue from state {state}. DO NOT restart bootstrap.')
 
 print(json.dumps({'systemMessage': msg}))
-" 2>/dev/null)
+" 2>/dev/null
 
-echo "$SUMMARY"
 exit 0

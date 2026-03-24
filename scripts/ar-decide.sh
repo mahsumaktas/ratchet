@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # ar-decide.sh — Mechanical decision engine for Ratchet
-# Reads latest metrics + best metrics + guard result → outputs KEEP/DISCARD + reason
 # This is NOT an LLM judgment — it's a deterministic script.
 
 set -euo pipefail
@@ -10,22 +9,19 @@ source "$SCRIPT_DIR/_lib.sh"
 root=$(ar_project_root)
 state_path=$(ar_state_path)
 latest_path="$root/.autoresearch/metrics/latest.json"
-
-# Get guard result (passed as argument or run fresh)
 guard_passed="${1:-true}"
 
-python3 -c "
-import json
+AR_STATE="$state_path" AR_LATEST="$latest_path" AR_GUARD="$guard_passed" python3 -c "
+import json, os
 
-with open('$state_path') as f:
+with open(os.environ['AR_STATE']) as f:
     state = json.load(f)
 best = state.get('best', {})
 
-with open('$latest_path') as f:
+with open(os.environ['AR_LATEST']) as f:
     latest = json.load(f)
 
-guard_ok = '$guard_passed'.lower() == 'true'
-
+guard_ok = os.environ['AR_GUARD'].lower() == 'true'
 improved = False
 worsened = False
 
